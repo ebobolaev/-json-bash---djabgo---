@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Состояние ПК · диагностика</title>
+  <link rel="stylesheet" href="{% static 'static_MOT_PC/css/all.css' %}">
+</head>
+<body>
+  <div class="container">
+    <div class="button-group">
+      <button class="status-button" id="checkButton">
+        Узнать состояние ПК
+      </button>
+      <button class="status-button secondary" id="stopButton">
+        Остановить диагностику
+      </button>
+    </div>
+    <hr class="divider" />
+    <table class="diagnostic-table" id="diagnosticTable">
+      <tr>
+        <th>Параметр</th>
+        <th>Значение</th>
+      </tr>
+      <tr>
+        <td>timestamp</td>
+        <td class="value-cell" id="val-timestamp">—</td>
+      </tr>
+      <tr>
+        <td>cpu_load</td>
+        <td class="value-cell" id="val-cpu_load">—</td>
+      </tr>
+      <tr>
+        <td>memory</td>
+        <td class="value-cell" id="val-memory">—</td>
+      </tr>
+      <tr>
+        <td>cpu_freq_mhz</td>
+        <td class="value-cell" id="val-cpu_freq_mhz">—</td>
+      </tr>
+      <tr>
+        <td>disk_usage</td>
+        <td class="value-cell" id="val-disk_usage">—</td>
+      </tr>
+    </table>
+  </div>
+
+  <script>
+    function formatMemory(mem) {
+      if (!mem) return '—';
+      return `${mem.used} / ${mem.total} (доступно ${mem.available})`;
+    }
+
+    function formatDisk(disks) {
+      if (!disks || disks.length === 0) return '—';
+      const root = disks.find(d => d.mount === '/') || disks[0];
+      return `${root.used} / ${root.size} (${root['use%']})`;
+    }
+
+    function updateStats() {
+      fetch('/api/stats/')
+        .then(response => {
+          if (!response.ok) throw new Error('Нет данных');
+          return response.json();
+        })
+        .then(data => {
+          document.getElementById('val-timestamp').textContent = data.timestamp || '—';
+
+          if (data.cpu_load) {
+            const cpu = data.cpu_load;
+            document.getElementById('val-cpu_load').textContent =
+              `${cpu['1 min']} / ${cpu['5 min']} / ${cpu['15 min']}`;
+          } else {
+            document.getElementById('val-cpu_load').textContent = '—';
+          }
+
+          document.getElementById('val-memory').textContent = formatMemory(data.memory);
+          document.getElementById('val-cpu_freq_mhz').textContent =
+            data.cpu_freq_mhz ? data.cpu_freq_mhz.toFixed(2) + ' MHz' : '—';
+          document.getElementById('val-disk_usage').textContent = formatDisk(data.disk_usage);
+        })
+        .catch(error => {
+          console.error('Ошибка получения данных:', error);
+          alert('Не удалось получить данные. Проверьте, запущен ли мониторинг.');
+        });
+    }
+
+    let autoUpdateInterval = null;
+
+    function startAutoUpdate() {
+      if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+      autoUpdateInterval = setInterval(updateStats, 10000);
+      console.log('Автообновление запущено');
+    }
+
+    function stopAutoUpdate() {
+      if (autoUpdateInterval) {
+        clearInterval(autoUpdateInterval);
+        autoUpdateInterval = null;
+        alert('Автоматическое обновление остановлено');
+        console.log('Автообновление остановлено');
+      } else {
+        alert('Автообновление уже остановлено');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('checkButton').addEventListener('click', function() {
+        updateStats();
+      });
+
+      document.getElementById('stopButton').addEventListener('click', function() {
+        stopAutoUpdate();
+      });
+
+      updateStats();
+      startAutoUpdate();
+    });
+  </script>
+</body>
+</html>
