@@ -1,14 +1,18 @@
+import os
 from pathlib import Path
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 
-SECRET_KEY = 'django-insecure-o20k*37k$fmm@#5shv!dp+@z4$)qeyhtdv)d(!^@5vsv-fy0!n'
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
-DEBUG = True
 
-ALLOWED_HOSTS = []
+DEBUG = int(os.environ.get("DEBUG", default=0))
+
+
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost").split(" ")
 
 
 
